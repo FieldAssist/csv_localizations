@@ -1,6 +1,6 @@
 import 'package:csv/csv.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 
 /// [CsvLocalizations] is used to load translations from a CSV file.
 class CsvLocalizations {
@@ -23,8 +23,25 @@ class CsvLocalizations {
   Future<CsvLocalizations> load(
     Locale locale,
     AssetBundle bundle,
-    String path,
-  ) async {
+    String path, {
+    String? fallbackPath,
+    VoidCallback? onFallbackCall,
+  }) async {
+    try {
+      final result = await _loadCsvLocalisations(locale, bundle, path);
+      return result;
+    } catch (e) {
+      if (fallbackPath != null) {
+        onFallbackCall?.call();
+        return _loadCsvLocalisations(locale, bundle, fallbackPath);
+      } else {
+        rethrow;
+      }
+    }
+  }
+
+  Future<CsvLocalizations> _loadCsvLocalisations(
+      Locale locale, AssetBundle bundle, String path) async {
     _langTag = locale.toLanguageTag();
     final csvDoc = await bundle.loadString(path);
     final rows = CsvToListConverter(eol: eol).convert(csvDoc);
@@ -63,8 +80,17 @@ class CsvLocalizations {
 class CsvLocalizationsDelegate extends LocalizationsDelegate<CsvLocalizations> {
   final String path;
   final AssetBundle? assetBundle;
+  final String? fallbackPath;
 
-  const CsvLocalizationsDelegate({required this.path, this.assetBundle});
+  /// It called when fallback path is used.
+  final VoidCallback? onFallbackCall;
+
+  const CsvLocalizationsDelegate({
+    required this.path,
+    this.assetBundle,
+    this.fallbackPath,
+    this.onFallbackCall,
+  });
 
   @override
   bool isSupported(Locale locale) =>
@@ -72,7 +98,13 @@ class CsvLocalizationsDelegate extends LocalizationsDelegate<CsvLocalizations> {
 
   @override
   Future<CsvLocalizations> load(Locale locale) =>
-      CsvLocalizations.instance.load(locale, assetBundle ?? rootBundle, path);
+      CsvLocalizations.instance.load(
+        locale,
+        assetBundle ?? rootBundle,
+        path,
+        fallbackPath: fallbackPath,
+        onFallbackCall: onFallbackCall,
+      );
 
   @override
   bool shouldReload(CsvLocalizationsDelegate old) => false;
