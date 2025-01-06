@@ -51,7 +51,7 @@ class CsvLocalizations {
       final String languageCode = languages[i];
       for (final List row in rows) {
         final String key = row.first;
-        final String value = row[i];
+        final String value = (row[i]?.toString() ?? row[i]);
         _translationsMap[languageCode]![key] = value;
       }
     }
